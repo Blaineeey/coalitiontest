@@ -5,14 +5,23 @@ export default function ProductPage() {
     const [products, setProducts] = useState([]);
     const [form, setForm] = useState({ name: '', quantity: '', price: '' });
     const [editing, setEditing] = useState(null);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         fetchProducts();
     }, []);
 
     const fetchProducts = async () => {
-        const res = await axios.get('/api/products');
-        setProducts(res.data);
+        try {
+            setLoading(true);
+            const res = await axios.get('http://localhost:8000/api/products'); // Ensure the full URL
+            setProducts(res.data);
+        } catch (error) {
+            console.error('Error fetching products:', error);
+            alert('There was an error fetching the products.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleChange = e => {
@@ -22,15 +31,24 @@ export default function ProductPage() {
     const handleSubmit = async e => {
         e.preventDefault();
 
-        if (editing) {
-            await axios.put(`/api/products/${editing}`, form);
-            setEditing(null);
-        } else {
-            await axios.post('/api/products', form);
+        if (form.quantity <= 0 || form.price <= 0) {
+            alert('Quantity and price must be greater than 0');
+            return;
         }
 
-        setForm({ name: '', quantity: '', price: '' });
-        fetchProducts();
+        try {
+            if (editing) {
+                await axios.put(`http://localhost:8000/api/products/${editing}`, form);
+                setEditing(null);
+            } else {
+                await axios.post('http://localhost:8000/api/products', form);
+            }
+            setForm({ name: '', quantity: '', price: '' });
+            fetchProducts();
+        } catch (error) {
+            console.error('Error submitting form:', error);
+            alert('There was an error submitting the product.');
+        }
     };
 
     const handleEdit = product => {
@@ -65,37 +83,41 @@ export default function ProductPage() {
                 </div>
             </form>
 
-            <table className="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Product name</th>
-                        <th>Quantity in stock</th>
-                        <th>Price per item</th>
-                        <th>Datetime submitted</th>
-                        <th>Total value</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {products.map(product => (
-                        <tr key={product.id}>
-                            <td>{product.name}</td>
-                            <td>{product.quantity}</td>
-                            <td>${product.price}</td>
-                            <td>{product.datetime}</td>
-                            <td>${product.total_value.toFixed(2)}</td>
-                            <td>
-                                <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(product)}>Edit</button>
-                            </td>
+            {loading ? (
+                <div>Loading...</div>
+            ) : (
+                <table className="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Product name</th>
+                            <th>Quantity in stock</th>
+                            <th>Price per item</th>
+                            <th>Datetime submitted</th>
+                            <th>Total value</th>
+                            <th>Actions</th>
                         </tr>
-                    ))}
-                    <tr className="fw-bold">
-                        <td colSpan="4">Total</td>
-                        <td>${totalSum.toFixed(2)}</td>
-                        <td></td>
-                    </tr>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {products.map(product => (
+                            <tr key={product.id}>
+                                <td>{product.name}</td>
+                                <td>{product.quantity}</td>
+                                <td>${product.price}</td>
+                                <td>{new Date(product.datetime).toLocaleString()}</td>
+                                <td>${product.total_value.toFixed(2)}</td>
+                                <td>
+                                    <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(product)}>Edit</button>
+                                </td>
+                            </tr>
+                        ))}
+                        <tr className="fw-bold">
+                            <td colSpan="4">Total</td>
+                            <td>${totalSum.toFixed(2)}</td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+            )}
         </div>
     );
 }
